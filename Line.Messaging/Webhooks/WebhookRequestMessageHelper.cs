@@ -1,7 +1,9 @@
 ﻿#if !NETSTANDARD1_4
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -12,13 +14,43 @@ namespace Line.Messaging.Webhooks
 {
     public static class WebhookRequestMessageHelper
     {
-        /// <summary>
+          /// <summary>
         /// Verify if the request is valid, then returns LINE Webhook events from the request
         /// </summary>
         /// <param name="request">HttpRequestMessage</param>
         /// <param name="channelSecret">ChannelSecret</param>
         /// <param name="botUserId">BotUserId</param>
         /// <returns>List of WebhookEvent</returns>
+        public static async Task<IEnumerable<WebhookEvent>> GetWebhookEventsAsync(this HttpRequest request, string channelSecret, string botUserId = null)
+        {
+            if (request == null) { throw new ArgumentNullException(nameof(request)); }
+            if (channelSecret == null) { throw new ArgumentNullException(nameof(channelSecret)); }
+
+            var content = "";
+            using (var reader = new StreamReader(request.Body))
+            {
+                content = await reader.ReadToEndAsync();
+            }
+
+            var xLineSignature = request.Headers["X-Line-Signature"].ToString();
+            if (string.IsNullOrEmpty(xLineSignature) || !VerifySignature(channelSecret, xLineSignature, content))
+            {
+                throw new InvalidSignatureException("Signature validation faild.");
+            }
+
+            dynamic json = JsonConvert.DeserializeObject(content);
+
+            if (!string.IsNullOrEmpty(botUserId))
+            {
+                if (botUserId != (string)json.destination)
+                {
+                    throw new UserIdMismatchException("Bot user ID does not match.");
+                }
+            }
+            return WebhookEventParser.ParseEvents(json.events);
+        }
+
+      
         public static async Task<IEnumerable<WebhookEvent>> GetWebhookEventsAsync(this HttpRequestMessage request, string channelSecret, string botUserId = null)
         {
             if (request == null) { throw new ArgumentNullException(nameof(request)); }
