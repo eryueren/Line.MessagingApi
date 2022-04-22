@@ -1,0 +1,113 @@
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+namespace Line.Messaging
+{
+    /// <summary>
+    /// Line OAuth
+    /// </summary>
+    public class LineOAuthClient
+    {
+        private static readonly Uri BaseUri = new Uri("https://api.line.me/");
+        private const string OAuthAccessTokenApiPath = "/v2/oauth/accessToken";
+        private const string OAuthRevokeTokenApiPath = "/v2/oauth/revoke";
+        private static readonly HttpClient HttpClient = new HttpClient
+        {
+            BaseAddress = BaseUri,
+            Timeout = TimeSpan.FromSeconds(15)
+        };
+
+        private readonly string channelId;
+        private readonly string channelSecret;
+
+        public LineOAuthClient(string channelId, string channelSecret)
+        {
+            if (string.IsNullOrEmpty(channelId))
+            {
+                throw new ArgumentException($"{nameof(channelId)} is null or empty.");
+            }
+            if (string.IsNullOrEmpty(channelSecret))
+            {
+                throw new ArgumentException($"{nameof(channelSecret)} is null or empty.");
+            }
+
+            this.channelId = channelId;
+            this.channelSecret = channelSecret;
+        }
+
+        /// <summary>
+        /// Get Line Accesstoken
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async Task<LineOAuthTokenResponse> GetAccessToken()
+        {
+            using (var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "grant_type", "client_credentials" },
+                { "client_id", channelId },
+                { "client_secret", channelSecret }
+            }))
+            {
+                try
+                {
+                    var response = await HttpClient.PostAsync(OAuthAccessTokenApiPath, content);
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var error = JsonConvert.DeserializeObject<LineOAuthErrorResponse>(responseJson);
+                        if (error != null)
+                        {
+                            throw new ArgumentNullException(nameof(error));
+                        }
+                        throw new ArgumentNullException($"Error has occurred. Response StatusCode:{response.StatusCode} ReasonPhrase:{response.ReasonPhrase}.");
+                    }
+
+                    return JsonConvert.DeserializeObject<LineOAuthTokenResponse>(responseJson);
+                }
+                catch (TaskCanceledException)
+                {
+                    throw new ArgumentNullException(OAuthAccessTokenApiPath, "Request Timeout");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Revoke Line AccessToken
+        /// </summary>
+        /// <param name="accessToken"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async Task RevokeAccessToken(string accessToken)
+        {
+            using (var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                { "access_token", accessToken }
+            }))
+            {
+                try
+                {
+                    var response = await HttpClient.PostAsync(OAuthRevokeTokenApiPath, content);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var responseJson = await response.Content.ReadAsStringAsync();
+                        var error = JsonConvert.DeserializeObject<LineOAuthErrorResponse>(responseJson);
+                        if (error != null)
+                        {
+                            throw new ArgumentNullException(OAuthAccessTokenApiPath, error.Description);
+                        }
+                        throw new ArgumentNullException(OAuthAccessTokenApiPath,
+                            $"Error has occurred. Response StatusCode:{response.StatusCode} ReasonPhrase:{response.ReasonPhrase}.");
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    throw new ArgumentNullException(OAuthAccessTokenApiPath, "Request Timeout");
+                }
+            }
+        }
+    }
+}

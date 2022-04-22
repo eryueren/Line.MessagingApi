@@ -26,7 +26,7 @@ namespace Line.Messaging.Webhooks
             if (request == null) { throw new ArgumentNullException(nameof(request)); }
             if (channelSecret == null) { throw new ArgumentNullException(nameof(channelSecret)); }
 
-            var content = "";
+            var content = string.Empty;
             using (var reader = new StreamReader(request.Body))
             {
                 content = await reader.ReadToEndAsync();

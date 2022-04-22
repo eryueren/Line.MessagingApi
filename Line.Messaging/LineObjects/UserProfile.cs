@@ -25,5 +25,10 @@
         /// Status message
         /// </summary>
         public string StatusMessage { get; set; }
+
+        /// <summary>
+        /// LanguageAlias
+        /// </summary>
+        public string Language { get; set; }
     }
 }
