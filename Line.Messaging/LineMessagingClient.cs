@@ -263,7 +263,8 @@ $@"{{
         /// <returns>Content as ContentStream</returns>
         public virtual async Task<ContentStream> GetContentStreamAsync(string messageId)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{_uri}/bot/message/{messageId}/content");
+            string baseDataUri = "https://api-data.line.me/v2";
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseDataUri}/bot/message/{messageId}/content");
             var response = await _client.SendAsync(request).ConfigureAwait(false);
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
             return new ContentStream(await response.Content.ReadAsStreamAsync(), response.Content.Headers);
@@ -277,7 +278,8 @@ $@"{{
         /// <returns>Content as byte array</returns>
         public virtual async Task<byte[]> GetContentBytesAsync(string messageId)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{_uri}/bot/message/{messageId}/content");
+            string baseDataUri = "https://api-data.line.me/v2";
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseDataUri}/bot/message/{messageId}/content");
             var response = await _client.SendAsync(request).ConfigureAwait(false);
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
             return await response.Content.ReadAsByteArrayAsync();
@@ -709,7 +711,7 @@ $@"{{
         }
 
         #endregion
-        
+
         public void Dispose()
         {
             _client?.Dispose();
